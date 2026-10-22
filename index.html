@@ -86,7 +86,7 @@ function imp(){const both=$('#tg').value=='both',last=(l,n)=>{const m=[...l.matc
  const add=$('#md').value=='add'&&!S.sam[L]&&S.D[L].length;S.rd=S.rd||{};const lr=S.rd[L]||0;
  if(add)d.forEach((x,i)=>{if(!r[i]||r[i]>lr)S.D[L].push(x)});else S.D[L]=d;
  S.rd[L]=Math.max(add?lr:0,...r,0);S.sam[L]=0});S.upd=new Date().toLocaleString('ja-JP');save();render();$('#im').textContent=ls.map(L=>'ナンバーズ'+L+'：合計'+S.D[L].length+'件').join('、')+'を取り込みました。'}
-load();[3,4].forEach(L=>{if(!S.D[L]||!S.D[L].length){S.D[L]=sample(L,300);S.sam[L]=1}});const API='ここにウェブアプリのURLを貼り付け',TK='na_tok';
+load();[3,4].forEach(L=>{if(!S.D[L]||!S.D[L].length){S.D[L]=sample(L,300);S.sam[L]=1}});const API='https://script.google.com/macros/s/AKfycbyP0hRCnswq7mX37hslUWJfgParui0fYpnqDrsgkNVZH7aUPUux0uib3H6cGTafmerB/exec',TK='na_tok';
 let T='';try{T=localStorage.getItem(TK)||''}catch(e){}
 const shell=x=>$('#app').innerHTML='<main style="max-width:360px;margin-top:60px">'+x+'</main>';
 async function call(b){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(b)});return r.json()}
