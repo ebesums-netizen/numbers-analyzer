@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Numbers Analyzer｜ナンバーズ3/4 綜合予報</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f4f6fb;--card:#fff;--tx:#1b1f2a;--mu:#6b7285;--ac:#3b5bdb;--bd:#e1e5ef;--hi:#e8590c;color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12141b;--card:#1c1f2a;--tx:#e8eaf2;--mu:#9aa1b5;--ac:#7c93ff;--bd:#2c3040;--hi:#ff9f5a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12141b;--card:#1c1f2a;--tx:#e8eaf2;--mu:#9aa1b5;--ac:#7c93ff;--bd:#2c3040;--hi:#ff9f5a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;padding-bottom:70px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--card);z-index:10}
+header{position:sticky;top:env(safe-area-inset-top,0px);background:var(--card);border-bottom:1px solid var(--bd);padding:10px 14px;z-index:9}
+h1{font-size:16px;margin:0 0 8px}h2{font-size:15px;margin:0 0 8px}
+main{padding:12px;max-width:640px;margin:auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px;overflow-x:auto}
+.seg{display:flex;gap:6px}.seg button,select,textarea,.btn{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:6px 12px}
+.seg button{flex:1}.seg button.on,.btn{background:var(--ac);color:#fff;border-color:var(--ac)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px);z-index:9}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:12px 0;font:inherit;font-size:13px}nav button.on{color:var(--ac);font-weight:700}
+.rc{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)}.rc:last-child{border:0}
+.num{font:700 26px ui-monospace,Menlo,monospace;letter-spacing:4px;color:var(--ac)}small,.mu{color:var(--mu);font-size:12px}
+.bar{display:flex;align-items:center;gap:6px;font-size:12px}.bar i{display:block;height:10px;background:var(--ac);border-radius:3px}
+table{border-collapse:collapse;width:100%;font-size:12px;text-align:center}td,th{padding:5px 3px;border:1px solid var(--bd)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid var(--bd);border-radius:8px;padding:3px 8px;font-size:12px}.chip.hl{border-color:var(--hi);color:var(--hi);font-weight:700}
+.warn{background:color-mix(in srgb,var(--hi) 14%,transparent);border-radius:8px;padding:8px;font-size:12px;margin-bottom:12px}
+textarea{width:100%;box-sizing:border-box;height:110px}label{display:block;margin:8px 0 4px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input{font:inherit;width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}</style></head><body><div id="app"></div>
+<script>
+const $=s=>document.querySelector(s);
+let S={t:3,n:30,tab:'home',pm:'straight',cnt:5,w:'balanced',theme:'auto',D:{3:[],4:[]},sam:{3:1,4:1},upd:''};
+const W={balanced:[.5,.3,.2,'バランス型'],recent:[.8,.1,.1,'最近よく出ている数字優先'],gap:[.2,.1,.7,'最近出ていない数字優先']};
+function save(){try{localStorage.setItem('na1',JSON.stringify(S))}catch(e){}}
+function load(){try{const j=JSON.parse(localStorage.getItem('na1'));if(j)Object.assign(S,j)}catch(e){}}
+function sample(L,n){let s=L*7919+1;const r=()=>(s=(s*1664525+1013904223)>>>0)/4294967296;return Array.from({length:n},()=>Array.from({length:L},()=>Math.floor(r()*10)))}
+const nm=a=>{const lo=Math.min(...a),hi=Math.max(...a);return a.map(v=>hi==lo?0:(v-lo)/(hi-lo))};
+function cnt(D,L,n){const c=Array.from({length:L},()=>Array(10).fill(0));D.slice(-n).forEach(x=>x.forEach((d,i)=>c[i][d]++));return c}
+function gaps(D,L){const g=Array.from({length:L},()=>Array(10).fill(D.length));for(let p=0;p<L;p++)for(let d=0;d<10;d++)for(let k=D.length-1;k>=0;k--)if(D[k][p]==d){g[p][d]=D.length-1-k;break}return g}
+function anyGap(D){const g=Array(10).fill(D.length);for(let d=0;d<10;d++)for(let k=D.length-1;k>=0;k--)if(D[k].includes(d)){g[d]=D.length-1-k;break}return g}
+function scoreAll(D,L,n,w){const r=cnt(D,L,n),g0=cnt(D,L,D.length),gp=gaps(D,L),P=[];
+ for(let p=0;p<L;p++){const a=nm(r[p]),b=nm(g0[p]),c=nm(gp[p]);P.push(a.map((_,d)=>w[0]*a[d]+w[1]*b[d]+w[2]*c[d]))}
+ const tot=Array(10).fill(0);P.forEach(q=>q.forEach((v,d)=>tot[d]+=v/L));return{P,tot}}
+function straight(sc,k=4){let c=[[[],0]];for(const q of sc.P){const t=q.map((v,d)=>[d,v]).sort((a,b)=>b[1]-a[1]).slice(0,k);c=c.flatMap(([ds,s])=>t.map(([d,v])=>[[...ds,d],s+v]))}return c.sort((a,b)=>b[1]-a[1])}
+function box(sc,L){const top=sc.tot.map((v,d)=>[d,v]).sort((a,b)=>b[1]-a[1]).slice(0,7).map(x=>x[0]),out=[];
+ (function f(s,cur){if(cur.length==L){out.push([cur.slice().sort((a,b)=>a-b),cur.reduce((t,d)=>t+sc.tot[d],0)]);return}for(let i=s;i<top.length;i++){cur.push(top[i]);f(i+1,cur);cur.pop()}})(0,[]);
+ return out.sort((a,b)=>b[1]-a[1])}
+function pats(D,n){const r={'ゾロ目':0,'2つ同じ数字':0,'階段':0,'逆階段':0,'連番':0};
+ D.slice(-n).forEach(x=>{const u=new Set(x).size;if(u==1)r['ゾロ目']++;if(u==x.length-1)r['2つ同じ数字']++;if(x.every((d,i)=>!i||d==x[i-1]+1))r['階段']++;if(x.every((d,i)=>!i||d==x[i-1]-1))r['逆階段']++;if(x.some((d,i)=>i&&Math.abs(d-x[i-1])==1))r['連番']++});return r}
+function bt(D,L,n,w,k){let h=0,t=0;for(let i=Math.max(30,D.length-200);i<D.length;i++){const top=straight(scoreAll(D.slice(0,i),L,n,w)).slice(0,k).map(x=>x[0].join(''));t++;if(top.includes(D[i].join('')))h++}return[h,t]}
+const pct=(s,L)=>Math.round(s/L*100);
+const card=(num,s,L,lb)=>`<div class="rc"><b class="num">${num}</b><span>スコア ${pct(s,L)}</span><small>${lb}</small></div>`;
+const rng=()=>`<div class="seg" style="margin-bottom:12px">${[[30,'直近30回'],[100,'直近100回'],[9999,'全期間']].map(([v,l])=>`<button class="${S.n==v?'on':''}" onclick="S.n=${v};save();render()">${l}</button>`).join('')}</div>`;
+function render(){
+ const L=S.t,D=S.D[L],n=Math.min(S.n,D.length),pos=L==3?['百','十','一']:['千','百','十','一'];let h='';
+ const sc=scoreAll(D,L,n,W[S.w]);
+ if(S.tab=='home'){const sb=straight(scoreAll(D,L,n,W.balanced)).slice(0,3),bb=box(scoreAll(D,L,n,W.balanced),L).slice(0,3);
+  h+=rng()+`<div class="card"><h2>今日のおすすめ（ストレート）</h2>${sb.map(([d,s])=>card(d.join(''),s,L,'バランス型')).join('')}</div>
+  <div class="card"><h2>ボックス候補</h2>${bb.map(([d,s])=>card(d.join(''),s,L,'バランス型')).join('')}</div>
+  <div class="card"><h2>直近の出目</h2><div class="chips">${D.slice(-20).reverse().map((x,i)=>`<span class="chip">${x.join('')}</span>`).join('')}</div><p class="mu">左が最新です。</p></div>`}
+ if(S.tab=='ana'){const c=cnt(D,L,n),tot=Array(10).fill(0);c.forEach(r=>r.forEach((v,d)=>tot[d]+=v));const mx=Math.max(...tot),hm=Math.max(...c.flat()),g=anyGap(D),gs=[...g].sort((a,b)=>b-a)[2],p=pats(D,n);
+  h+=rng()+`<div class="card"><h2>数字別の出現頻度</h2>${tot.map((v,d)=>`<div class="bar"><b>${d}</b><i style="width:${v/mx*70}%"></i>${v}（${(v/(n*L)*100).toFixed(1)}%）</div>`).join('')}</div>
+  <div class="card"><h2>桁×数字ヒートマップ</h2><table><tr><th></th>${[...Array(10).keys()].map(d=>`<th>${d}</th>`).join('')}</tr>${c.map((r,i)=>`<tr><th>${pos[i]}</th>${r.map(v=>`<td style="background:color-mix(in srgb,var(--ac) ${Math.round(v/hm*80)}%,transparent)">${v}</td>`).join('')}</tr>`).join('')}</table></div>
+  <div class="card"><h2>未出期間（Gap）</h2><div class="chips">${g.map((v,d)=>`<span class="chip ${v>=gs&&v>0?'hl':''}">${d}：${v}回</span>`).join('')}</div><p class="mu">橙色は特に長く出ていない数字です。</p></div>
+  <div class="card"><h2>パターン分析（${n}回中）</h2><table>${Object.entries(p).map(([k,v])=>`<tr><td>${k}</td><td>${v}回</td><td>${(v/n*100).toFixed(1)}%</td></tr>`).join('')}</table></div>
+  <div class="card"><h2>バックテスト</h2><p class="mu">過去データで「直前までの情報から上位5点を選ぶ」を検証します。</p><button class="btn" onclick="runBt()">実行する</button><div id="bt"></div></div>`}
+ if(S.tab=='rec'){const r=S.pm=='straight'?straight(sc).slice(0,S.cnt):box(sc,L).slice(0,S.cnt);
+  h+=`<div class="card"><div class="row"><select onchange="S.pm=this.value;save();render()"><option value="straight" ${S.pm=='straight'?'selected':''}>ストレート</option><option value="box" ${S.pm=='box'?'selected':''}>ボックス</option></select>
+  <select onchange="S.cnt=+this.value;save();render()">${[1,3,5,10].map(v=>`<option ${S.cnt==v?'selected':''} value="${v}">${v}セット</option>`).join('')}</select>
+  <select onchange="S.n=+this.value;save();render()">${[[30,'直近30回'],[100,'直近100回'],[9999,'全期間']].map(([v,l])=>`<option ${S.n==v?'selected':''} value="${v}">${l}</option>`).join('')}</select>
+  <select onchange="S.w=this.value;save();render()">${Object.entries(W).map(([k,v])=>`<option ${S.w==k?'selected':''} value="${k}">${v[3]}</option>`).join('')}</select></div></div>
+  <div class="card"><h2>おすすめ結果</h2>${r.map(([d,s])=>card(d.join(''),s,L,W[S.w][3])).join('')}</div>`}
+ if(S.tab=='set'){h+=`<div class="card"><h2>表示設定</h2><label>テーマ</label><select onchange="S.theme=this.value;save();render()">${[['auto','自動'],['light','ライト'],['dark','ダーク']].map(([v,l])=>`<option value="${v}" ${S.theme==v?'selected':''}>${l}</option>`).join('')}</select>
+  <p class="mu">データ最終更新：${S.upd||'未更新（サンプル）'}／保持件数：${D.length}件／ご利用期限：${S.exp||'なし'}</p><button class="btn" onclick="logout()">ログアウト</button></div>`}
+ const sam=S.sam[L]?'<div class="warn">現在はサンプルデータ（疑似乱数）で動いています。設定から実際の当選番号を取り込むと、実データで分析します。</div>':'';
+ $('#app').innerHTML=`<header><h1>Numbers Analyzer ｜ 綜合予報</h1><div class="seg">${[3,4].map(t=>`<button class="${S.t==t?'on':''}" onclick="S.t=${t};save();render()">ナンバーズ${t}</button>`).join('')}</div></header>
+ <main>${sam}${h}<p class="mu">※当選を保証するものではなく、過去の出目を整理した参考情報です。抽選は毎回独立しており、購入は無理のない範囲でお願いします。</p></main>
+ <nav>${[['home','ホーム'],['ana','分析'],['rec','おすすめ'],['set','設定']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)">${l}</button>`).join('')}</nav>`;
+ S.theme=='auto'?document.documentElement.removeAttribute('data-theme'):document.documentElement.setAttribute('data-theme',S.theme)}
+function runBt(){const L=S.t,D=S.D[L],n=Math.min(S.n,D.length),base=5/10**L*100;
+ $('#bt').innerHTML='<table><tr><th>方針</th><th>的中</th><th>的中率</th></tr>'+Object.values(W).map(w=>{const[h,t]=bt(D,L,n,w,5);return`<tr><td>${w[3]}</td><td>${h}/${t}</td><td>${(h/t*100).toFixed(1)}%</td></tr>`}).join('')+`</table><p class="mu">でたらめに5点選んだ場合の期待値は約${base.toFixed(2)}%です。これを大きく上回らなければ、スコアに予測力があるとは言えません。</p>`}
+function imp(){const both=$('#tg').value=='both',last=(l,n)=>{const m=[...l.matchAll(new RegExp('(?<!\\d)\\d{'+n+'}(?!\\d)','g'))];return m.length?m[m.length-1]:null},o={3:[],4:[]},R={3:[],4:[]},rn=l=>{const m=l.match(/第\s*(\d+)\s*回/);return m?+m[1]:0};
+ $('#ta').value.split(/\n/).forEach(l=>{if(both){const a=last(l,3),b=last(l,4);if(a&&b&&a.index<b.index){o[3].push([...a[0]].map(Number));o[4].push([...b[0]].map(Number));R[3].push(rn(l));R[4].push(rn(l))}}else{const a=last(l,S.t);if(a){o[S.t].push([...a[0]].map(Number));R[S.t].push(rn(l))}}});
+ const ls=both?[3,4]:[S.t];if(!o[ls[0]].length){$('#im').textContent='取り込める行が見つかりませんでした。形式を確認してください。';return}
+ ls.forEach(L=>{let d=o[L],r=R[L];if($('#ord').value=='new'){d=d.slice().reverse();r=r.slice().reverse()}
+ const add=$('#md').value=='add'&&!S.sam[L]&&S.D[L].length;S.rd=S.rd||{};const lr=S.rd[L]||0;
+ if(add)d.forEach((x,i)=>{if(!r[i]||r[i]>lr)S.D[L].push(x)});else S.D[L]=d;
+ S.rd[L]=Math.max(add?lr:0,...r,0);S.sam[L]=0});S.upd=new Date().toLocaleString('ja-JP');save();render();$('#im').textContent=ls.map(L=>'ナンバーズ'+L+'：合計'+S.D[L].length+'件').join('、')+'を取り込みました。'}
+load();[3,4].forEach(L=>{if(!S.D[L]||!S.D[L].length){S.D[L]=sample(L,300);S.sam[L]=1}});const API='ここにウェブアプリのURLを貼り付け',TK='na_tok';
+let T='';try{T=localStorage.getItem(TK)||''}catch(e){}
+const shell=x=>$('#app').innerHTML='<main style="max-width:360px;margin-top:60px">'+x+'</main>';
+async function call(b){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(b)});return r.json()}
+function gate(msg){shell('<div class="card"><h2>Numbers Analyzer ログイン</h2><label>ID</label><input id="lid" autocomplete="username"><label>パスワード</label><input id="lpw" type="password" autocomplete="current-password"><p id="lm" style="color:var(--hi);font-size:13px"></p><button class="btn" id="lb" onclick="doLogin()">ログイン</button></div>');$('#lm').textContent=msg||'';$('#lpw').onkeydown=e=>{if(e.key=='Enter')doLogin()}}
+async function doLogin(){const i=$('#lid').value.trim(),p=$('#lpw').value;if(!i||!p){$('#lm').textContent='IDとパスワードを入力してください。';return}
+ $('#lb').disabled=true;$('#lm').textContent='確認しています…';
+ try{const r=await call({a:'login',id:i,pw:p});if(r.token){T=r.token;try{localStorage.setItem(TK,T)}catch(e){}await remote()}else gate(r.err||'ログインできませんでした。')}catch(e){gate('通信に失敗しました。もう一度お試しください。')}}
+async function remote(){shell('<p class="mu">読み込み中…</p>');
+ try{const d=await call({a:'data',t:T});if(d.err){logout(d.err);return}S.D={3:d[3],4:d[4]};S.sam={3:0,4:0};S.upd=d.upd||'';S.exp=d.exp||'';render()}
+ catch(e){shell('<div class="card"><p>通信に失敗しました。</p><button class="btn" onclick="remote()">もう一度読み込む</button></div>')}}
+function logout(msg){T='';try{localStorage.removeItem(TK)}catch(e){}gate(typeof msg=='string'?msg:'')}
+function boot(){if(!/^https:\/\//.test(API)){shell('<div class="card">設定が未完了です。index.html の API の行に、ウェブアプリのURLを貼り付けてください。</div>');return}T?remote():gate()}
+boot();
+</script></body></html>
