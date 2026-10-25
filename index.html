@@ -27,9 +27,10 @@ table{border-collapse:collapse;width:100%;font-size:12px;text-align:center}td,th
 textarea{width:100%;box-sizing:border-box;height:110px}label{display:block;margin:8px 0 4px;font-size:13px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 input{font:inherit;width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}</style></head><body><div id="app"></div>
+<script src="config.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-let S={t:3,n:30,tab:'home',pm:'straight',cnt:5,w:'balanced',theme:'auto',D:{3:[],4:[]},sam:{3:1,4:1},upd:''};
+let S={rk:'st',rw:7,t:3,n:30,tab:'home',pm:'straight',cnt:5,w:'balanced',theme:'auto',D:{3:[],4:[]},sam:{3:1,4:1},upd:''};
 const W={balanced:[.5,.3,.2,'バランス型'],recent:[.8,.1,.1,'最近よく出ている数字優先'],gap:[.2,.1,.7,'最近出ていない数字優先']};
 function save(){try{localStorage.setItem('na1',JSON.stringify(S))}catch(e){}}
 function load(){try{const j=JSON.parse(localStorage.getItem('na1'));if(j)Object.assign(S,j)}catch(e){}}
@@ -51,6 +52,18 @@ function bt(D,L,n,w,k){let h=0,t=0;for(let i=Math.max(30,D.length-200);i<D.lengt
 const pct=(s,L)=>Math.round(s/L*100);
 const card=(num,s,L,lb)=>`<div class="rc"><b class="num">${num}</b><span>スコア ${pct(s,L)}</span><small>${lb}</small></div>`;
 const rng=()=>`<div class="seg" style="margin-bottom:12px">${[[30,'直近30回'],[100,'直近100回'],[9999,'全期間']].map(([v,l])=>`<button class="${S.n==v?'on':''}" onclick="S.n=${v};save();render()">${l}</button>`).join('')}</div>`;
+const fact=k=>k<2?1:k*fact(k-1);
+function prm(c){const m={};c.forEach(d=>m[d]=(m[d]||0)+1);return Object.values(m).reduce((t,v)=>t/fact(v),fact(c.length))}
+function fc(D,L,n,w,kind,K){const sc=scoreAll(D,L,n,w);
+ if(kind=='st')return straight(sc).slice(0,K).map(x=>x[0]);
+ if(kind=='bx')return box(sc,L).slice(0,K).map(x=>x[0]);
+ const q=[];for(let a=0;a<10;a++)for(let b=0;b<10;b++)q.push([[a,b],sc.P[1][a]+sc.P[2][b]]);return q.sort((x,y)=>y[1]-x[1]).slice(0,K).map(x=>x[0])}
+function base(kind,f,L){return kind=='st'?f.length/10**L:kind=='mi'?f.length/100:f.reduce((t,c)=>t+prm(c),0)/10**L}
+function evalWin(D,L,n,w,kind,K,Wn){const rows=[];let h=0,b=0;
+ for(let i=Math.max(30,D.length-Wn);i<D.length;i++){const f=fc(D.slice(0,i),L,n,w,kind,K),act=D[i],
+  key=kind=='st'?act.join(''):kind=='bx'?[...act].sort((x,y)=>x-y).join(''):act.slice(1).join(''),ok=f.some(x=>x.join('')==key);
+  if(ok)h++;b+=base(kind,f,L);rows.push({act:act.join(''),f,key,hit:ok})}
+ return{rows,h,t:rows.length,b:rows.length?b/rows.length:0}}
 function render(){
  const L=S.t,D=S.D[L],n=Math.min(S.n,D.length),pos=L==3?['百','十','一']:['千','百','十','一'];let h='';
  const sc=scoreAll(D,L,n,W[S.w]);
@@ -70,12 +83,24 @@ function render(){
   <select onchange="S.n=+this.value;save();render()">${[[30,'直近30回'],[100,'直近100回'],[9999,'全期間']].map(([v,l])=>`<option ${S.n==v?'selected':''} value="${v}">${l}</option>`).join('')}</select>
   <select onchange="S.w=this.value;save();render()">${Object.entries(W).map(([k,v])=>`<option ${S.w==k?'selected':''} value="${k}">${v[3]}</option>`).join('')}</select></div></div>
   <div class="card"><h2>おすすめ結果</h2>${r.map(([d,s])=>card(d.join(''),s,L,W[S.w][3])).join('')}</div>`}
- if(S.tab=='set'){h+=`<div class="card"><h2>表示設定</h2><label>テーマ</label><select onchange="S.theme=this.value;save();render()">${[['auto','自動'],['light','ライト'],['dark','ダーク']].map(([v,l])=>`<option value="${v}" ${S.theme==v?'selected':''}>${l}</option>`).join('')}</select>
+ if(S.tab=='res'){const ks=L==3?[['st','ストレート'],['bx','ボックス'],['mi','ミニ（下2桁）']]:[['st','ストレート'],['bx','ボックス']];if(!ks.some(k=>k[0]==S.rk))S.rk='st';
+  const K=S.cnt,Wn=S.rw,rg=[[30,'直近30回'],[100,'直近100回'],[9999,'全期間']],wl=Object.entries(W),r=evalWin(D,L,S.n,W[S.w],S.rk,K,Wn);
+  const M=rg.map(([v,l])=>`<tr><th>${l}</th>${wl.map(([k,w])=>{const e=evalWin(D,L,v,w,S.rk,K,Wn);return`<td>${e.h}/${e.t}<br><b>${e.t?Math.round(e.h/e.t*100):0}%</b></td>`}).join('')}</tr>`).join('');
+  h+=`<div class="card"><div class="seg">${ks.map(([k,l])=>`<button class="${S.rk==k?'on':''}" onclick="S.rk='${k}';save();render()">${l}</button>`).join('')}</div>
+  <div class="row" style="margin-top:8px"><select onchange="S.rw=+this.value;save();render()">${[7,30].map(v=>`<option ${S.rw==v?'selected':''} value="${v}">過去${v}回</option>`).join('')}</select>
+  <select onchange="S.cnt=+this.value;save();render()">${[1,3,5,10].map(v=>`<option ${S.cnt==v?'selected':''} value="${v}">${v}セット</option>`).join('')}</select></div></div>
+  <div class="card"><h2>的中率（過去${Wn}回・${K}セット）</h2><table><tr><th></th>${wl.map(([k,w])=>`<th>${w[3]}</th>`).join('')}</tr>${M}</table>
+  <p class="mu">各回の予報は、その回より前のデータだけで作っています。でたらめに選んだ場合の期待値は約${(r.b*100).toFixed(2)}%です。回数が少ないと、偶然で大きく変わります。</p></div>
+  <div class="card"><h2>過去${Wn}回の予報と結果</h2><div class="row" style="margin-bottom:8px"><select onchange="S.n=+this.value;save();render()">${rg.map(([v,l])=>`<option ${S.n==v?'selected':''} value="${v}">${l}</option>`).join('')}</select>
+  <select onchange="S.w=this.value;save();render()">${wl.map(([k,w])=>`<option ${S.w==k?'selected':''} value="${k}">${w[3]}</option>`).join('')}</select></div>
+  <table><tr><th>回</th><th>当選</th><th>予報</th><th></th></tr>${r.rows.slice().reverse().map((x,j)=>`<tr><td>${j?j+'回前':'最新'}</td><td><b>${x.act}</b></td><td style="text-align:left">${x.f.map(f=>`<span class="chip ${f.join('')==x.key?'hl':''}">${f.join('')}</span>`).join(' ')}</td><td>${x.hit?'◯':'×'}</td></tr>`).join('')}</table>
+  ${S.rk=='mi'?'<p class="mu">ミニは、当選番号の下2桁（十の位と一の位）が並びも含めて一致すると的中です。</p>':''}</div>`}
+  if(S.tab=='set'){h+=`<div class="card"><h2>表示設定</h2><label>テーマ</label><select onchange="S.theme=this.value;save();render()">${[['auto','自動'],['light','ライト'],['dark','ダーク']].map(([v,l])=>`<option value="${v}" ${S.theme==v?'selected':''}>${l}</option>`).join('')}</select>
   <p class="mu">データ最終更新：${S.upd||'未更新（サンプル）'}／保持件数：${D.length}件／ご利用期限：${S.exp||'なし'}</p><button class="btn" onclick="logout()">ログアウト</button></div>`}
  const sam=S.sam[L]?'<div class="warn">現在はサンプルデータ（疑似乱数）で動いています。設定から実際の当選番号を取り込むと、実データで分析します。</div>':'';
  $('#app').innerHTML=`<header><h1>Numbers Analyzer ｜ 綜合予報</h1><div class="seg">${[3,4].map(t=>`<button class="${S.t==t?'on':''}" onclick="S.t=${t};save();render()">ナンバーズ${t}</button>`).join('')}</div></header>
  <main>${sam}${h}<p class="mu">※当選を保証するものではなく、過去の出目を整理した参考情報です。抽選は毎回独立しており、購入は無理のない範囲でお願いします。</p></main>
- <nav>${[['home','ホーム'],['ana','分析'],['rec','おすすめ'],['set','設定']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)">${l}</button>`).join('')}</nav>`;
+ <nav>${[['home','ホーム'],['ana','分析'],['rec','予報'],['res','的中実績'],['set','設定']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)">${l}</button>`).join('')}</nav>`;
  S.theme=='auto'?document.documentElement.removeAttribute('data-theme'):document.documentElement.setAttribute('data-theme',S.theme)}
 function runBt(){const L=S.t,D=S.D[L],n=Math.min(S.n,D.length),base=5/10**L*100;
  $('#bt').innerHTML='<table><tr><th>方針</th><th>的中</th><th>的中率</th></tr>'+Object.values(W).map(w=>{const[h,t]=bt(D,L,n,w,5);return`<tr><td>${w[3]}</td><td>${h}/${t}</td><td>${(h/t*100).toFixed(1)}%</td></tr>`}).join('')+`</table><p class="mu">でたらめに5点選んだ場合の期待値は約${base.toFixed(2)}%です。これを大きく上回らなければ、スコアに予測力があるとは言えません。</p>`}
@@ -86,7 +111,7 @@ function imp(){const both=$('#tg').value=='both',last=(l,n)=>{const m=[...l.matc
  const add=$('#md').value=='add'&&!S.sam[L]&&S.D[L].length;S.rd=S.rd||{};const lr=S.rd[L]||0;
  if(add)d.forEach((x,i)=>{if(!r[i]||r[i]>lr)S.D[L].push(x)});else S.D[L]=d;
  S.rd[L]=Math.max(add?lr:0,...r,0);S.sam[L]=0});S.upd=new Date().toLocaleString('ja-JP');save();render();$('#im').textContent=ls.map(L=>'ナンバーズ'+L+'：合計'+S.D[L].length+'件').join('、')+'を取り込みました。'}
-load();[3,4].forEach(L=>{if(!S.D[L]||!S.D[L].length){S.D[L]=sample(L,300);S.sam[L]=1}});const API='https://script.google.com/macros/s/AKfycbyP0hRCnswq7mX37hslUWJfgParui0fYpnqDrsgkNVZH7aUPUux0uib3H6cGTafmerB/exec',TK='na_tok';
+load();[3,4].forEach(L=>{if(!S.D[L]||!S.D[L].length){S.D[L]=sample(L,300);S.sam[L]=1}});const API=window.API_URL||'',TK='na_tok';
 let T='';try{T=localStorage.getItem(TK)||''}catch(e){}
 const shell=x=>$('#app').innerHTML='<main style="max-width:360px;margin-top:60px">'+x+'</main>';
 async function call(b){const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(b)});return r.json()}
@@ -98,6 +123,6 @@ async function remote(){shell('<p class="mu">読み込み中…</p>');
  try{const d=await call({a:'data',t:T});if(d.err){logout(d.err);return}S.D={3:d[3],4:d[4]};S.sam={3:0,4:0};S.upd=d.upd||'';S.exp=d.exp||'';render()}
  catch(e){shell('<div class="card"><p>通信に失敗しました。</p><button class="btn" onclick="remote()">もう一度読み込む</button></div>')}}
 function logout(msg){T='';try{localStorage.removeItem(TK)}catch(e){}gate(typeof msg=='string'?msg:'')}
-function boot(){if(!/^https:\/\//.test(API)){shell('<div class="card">設定が未完了です。index.html の API の行に、ウェブアプリのURLを貼り付けてください。</div>');return}T?remote():gate()}
+function boot(){if(!/^https:\/\//.test(API)){shell('<div class="card">設定が未完了です。config.js に、ウェブアプリのURLを貼り付けてください。</div>');return}T?remote():gate()}
 boot();
 </script></body></html>
