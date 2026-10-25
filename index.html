@@ -87,7 +87,7 @@ function render(){
   const K=S.cnt,Wn=S.rw,rg=[[30,'直近30回'],[100,'直近100回'],[9999,'全期間']],wl=Object.entries(W),r=evalWin(D,L,S.n,W[S.w],S.rk,K,Wn);
   const M=rg.map(([v,l])=>`<tr><th>${l}</th>${wl.map(([k,w])=>{const e=evalWin(D,L,v,w,S.rk,K,Wn);return`<td>${e.h}/${e.t}<br><b>${e.t?Math.round(e.h/e.t*100):0}%</b></td>`}).join('')}</tr>`).join('');
   h+=`<div class="card"><div class="seg">${ks.map(([k,l])=>`<button class="${S.rk==k?'on':''}" onclick="S.rk='${k}';save();render()">${l}</button>`).join('')}</div>
-  <div class="row" style="margin-top:8px"><select onchange="S.rw=+this.value;save();render()">${[7,30].map(v=>`<option ${S.rw==v?'selected':''} value="${v}">過去${v}回</option>`).join('')}</select>
+  <div class="row" style="margin-top:8px"><select onchange="S.rw=+this.value;save();render()">${[7,20,30].map(v=>`<option ${S.rw==v?'selected':''} value="${v}">過去${v}回${v==20?'（約4週間）':''}</option>`).join('')}</select>
   <select onchange="S.cnt=+this.value;save();render()">${[1,3,5,10].map(v=>`<option ${S.cnt==v?'selected':''} value="${v}">${v}セット</option>`).join('')}</select></div></div>
   <div class="card"><h2>的中率（過去${Wn}回・${K}セット）</h2><table><tr><th></th>${wl.map(([k,w])=>`<th>${w[3]}</th>`).join('')}</tr>${M}</table>
   <p class="mu">各回の予報は、その回より前のデータだけで作っています。でたらめに選んだ場合の期待値は約${(r.b*100).toFixed(2)}%です。回数が少ないと、偶然で大きく変わります。</p></div>
