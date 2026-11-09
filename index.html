@@ -28,10 +28,12 @@ textarea{width:100%;box-sizing:border-box;height:110px}label{display:block;margi
 .row{display:flex;gap:8px;flex-wrap:wrap}
 input{font:inherit;width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}</style></head><body><div id="app"></div>
 <script src="config.js"></script>
+<script src="ai.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-let S={rk:'st',rw:7,t:3,n:30,tab:'home',pm:'straight',cnt:5,w:'balanced',theme:'auto',D:{3:[],4:[]},sam:{3:1,4:1},upd:''};
+let S={w:'ai',rk:'st',rw:7,t:3,n:30,tab:'home',pm:'straight',cnt:5,theme:'auto',D:{3:[],4:[]},sam:{3:1,4:1},upd:''};
 const W={balanced:[.5,.3,.2,'バランス型'],recent:[.8,.1,.1,'最近よく出ている数字優先'],gap:[.2,.1,.7,'最近出ていない数字優先']};
+Object.defineProperty(W,'ai',{value:[0,0,0,'AI総合（資料の配分）']});
 function save(){try{localStorage.setItem('na1',JSON.stringify(S))}catch(e){}}
 function load(){try{const j=JSON.parse(localStorage.getItem('na1'));if(j)Object.assign(S,j)}catch(e){}}
 function sample(L,n){let s=L*7919+1;const r=()=>(s=(s*1664525+1013904223)>>>0)/4294967296;return Array.from({length:n},()=>Array.from({length:L},()=>Math.floor(r()*10)))}
@@ -54,7 +56,7 @@ const card=(num,s,L,lb)=>`<div class="rc"><b class="num">${num}</b><span>スコ�
 const rng=()=>`<div class="seg" style="margin-bottom:12px">${[[30,'直近30回'],[100,'直近100回'],[9999,'全期間']].map(([v,l])=>`<button class="${S.n==v?'on':''}" onclick="S.n=${v};save();render()">${l}</button>`).join('')}</div>`;
 const fact=k=>k<2?1:k*fact(k-1);
 function prm(c){const m={};c.forEach(d=>m[d]=(m[d]||0)+1);return Object.values(m).reduce((t,v)=>t/fact(v),fact(c.length))}
-function fc(D,L,n,w,kind,K){const sc=scoreAll(D,L,n,w);
+function fc(D,L,n,w,kind,K){if(w===W.ai)return aiFc(D,L,kind,K);const sc=scoreAll(D,L,n,w);
  if(kind=='st')return straight(sc).slice(0,K).map(x=>x[0]);
  if(kind=='bx')return box(sc,L).slice(0,K).map(x=>x[0]);
  const q=[];for(let a=0;a<10;a++)for(let b=0;b<10;b++)q.push([[a,b],sc.P[1][a]+sc.P[2][b]]);return q.sort((x,y)=>y[1]-x[1]).slice(0,K).map(x=>x[0])}
@@ -64,10 +66,14 @@ function evalWin(D,L,n,w,kind,K,Wn){const rows=[];let h=0,b=0;
   key=kind=='st'?act.join(''):kind=='bx'?[...act].sort((x,y)=>x-y).join(''):act.slice(1).join(''),ok=f.some(x=>x.join('')==key);
   if(ok)h++;b+=base(kind,f,L);rows.push({act:act.join(''),f,key,hit:ok})}
  return{rows,h,t:rows.length,b:rows.length?b/rows.length:0}}
+const _ev=evalWin,_c={};evalWin=(D,L,n,w,kind,K,Wn)=>{if(w!==W.ai)return _ev(D,L,n,w,kind,K,Wn);const k=[L,kind,K,Wn,D.length].join();return _c[k]||(_c[k]=_ev(D,L,n,w,kind,K,Wn))};
 function render(){
  const L=S.t,D=S.D[L],n=Math.min(S.n,D.length),pos=L==3?['百','十','一']:['千','百','十','一'];let h='';
  const sc=scoreAll(D,L,n,W[S.w]);
- if(S.tab=='home'){const sb=straight(scoreAll(D,L,n,W.balanced)).slice(0,3),bb=box(scoreAll(D,L,n,W.balanced),L).slice(0,3);
+ if(S.tab=='home'){h+=aiHome(D,L)}
+ if(S.tab=='ai'){h+=aiList(D,L)}
+ if(S.tab=='dt'){h+=aiDetail(D,L)}
+ if(false){const sb=straight(scoreAll(D,L,n,W.balanced)).slice(0,3),bb=box(scoreAll(D,L,n,W.balanced),L).slice(0,3);
   h+=rng()+`<div class="card"><h2>今日のおすすめ（ストレート）</h2>${sb.map(([d,s])=>card(d.join(''),s,L,'バランス型')).join('')}</div>
   <div class="card"><h2>ボックス候補</h2>${bb.map(([d,s])=>card(d.join(''),s,L,'バランス型')).join('')}</div>
   <div class="card"><h2>直近の出目</h2><div class="chips">${D.slice(-20).reverse().map((x,i)=>`<span class="chip">${x.join('')}</span>`).join('')}</div><p class="mu">左が最新です。</p></div>`}
@@ -84,13 +90,13 @@ function render(){
   <select onchange="S.w=this.value;save();render()">${Object.entries(W).map(([k,v])=>`<option ${S.w==k?'selected':''} value="${k}">${v[3]}</option>`).join('')}</select></div></div>
   <div class="card"><h2>おすすめ結果</h2>${r.map(([d,s])=>card(d.join(''),s,L,W[S.w][3])).join('')}</div>`}
  if(S.tab=='res'){const ks=L==3?[['st','ストレート'],['bx','ボックス'],['mi','ミニ（下2桁）']]:[['st','ストレート'],['bx','ボックス']];if(!ks.some(k=>k[0]==S.rk))S.rk='st';
-  const K=S.cnt,Wn=S.rw,rg=[[30,'直近30回'],[100,'直近100回'],[9999,'全期間']],wl=Object.entries(W),r=evalWin(D,L,S.n,W[S.w],S.rk,K,Wn);
+  const K=S.cnt,Wn=S.rw,rg=[[30,'直近30回'],[100,'直近100回'],[9999,'全期間']],wl=[['ai',W.ai],...Object.entries(W)],r=evalWin(D,L,S.n,W[S.w],S.rk,K,Wn);
   const M=rg.map(([v,l])=>`<tr><th>${l}</th>${wl.map(([k,w])=>{const e=evalWin(D,L,v,w,S.rk,K,Wn);return`<td>${e.h}/${e.t}<br><b>${e.t?Math.round(e.h/e.t*100):0}%</b></td>`}).join('')}</tr>`).join('');
   h+=`<div class="card"><div class="seg">${ks.map(([k,l])=>`<button class="${S.rk==k?'on':''}" onclick="S.rk='${k}';save();render()">${l}</button>`).join('')}</div>
   <div class="row" style="margin-top:8px"><select onchange="S.rw=+this.value;save();render()">${[7,20,30].map(v=>`<option ${S.rw==v?'selected':''} value="${v}">過去${v}回${v==20?'（約4週間）':''}</option>`).join('')}</select>
   <select onchange="S.cnt=+this.value;save();render()">${[1,3,5,10].map(v=>`<option ${S.cnt==v?'selected':''} value="${v}">${v}セット</option>`).join('')}</select></div></div>
   <div class="card"><h2>的中率（過去${Wn}回・${K}セット）</h2><table><tr><th></th>${wl.map(([k,w])=>`<th>${w[3]}</th>`).join('')}</tr>${M}</table>
-  <p class="mu">各回の予報は、その回より前のデータだけで作っています。でたらめに選んだ場合の期待値は約${(r.b*100).toFixed(2)}%です。回数が少ないと、偶然で大きく変わります。</p></div>
+  <p class="mu">各回の予報は、その回より前のデータだけで作っています。でたらめに選んだ場合の期待値は約${(r.b*100).toFixed(2)}%です。回数が少ないと、偶然で大きく変わります。AI総合は、期間の選択に関係なく、資料の配分で計算します。</p></div>
   <div class="card"><h2>過去${Wn}回の予報と結果</h2><div class="row" style="margin-bottom:8px"><select onchange="S.n=+this.value;save();render()">${rg.map(([v,l])=>`<option ${S.n==v?'selected':''} value="${v}">${l}</option>`).join('')}</select>
   <select onchange="S.w=this.value;save();render()">${wl.map(([k,w])=>`<option ${S.w==k?'selected':''} value="${k}">${w[3]}</option>`).join('')}</select></div>
   <table><tr><th>回</th><th>当選</th><th>予報</th><th></th></tr>${r.rows.slice().reverse().map((x,j)=>`<tr><td>${j?j+'回前':'最新'}</td><td><b>${x.act}</b></td><td style="text-align:left">${x.f.map(f=>`<span class="chip ${f.join('')==x.key?'hl':''}">${f.join('')}</span>`).join(' ')}</td><td>${x.hit?'◯':'×'}</td></tr>`).join('')}</table>
@@ -100,7 +106,7 @@ function render(){
  const sam=S.sam[L]?'<div class="warn">現在はサンプルデータ（疑似乱数）で動いています。設定から実際の当選番号を取り込むと、実データで分析します。</div>':'';
  $('#app').innerHTML=`<header><h1>Numbers Analyzer ｜ 綜合予報</h1><div class="seg">${[3,4].map(t=>`<button class="${S.t==t?'on':''}" onclick="S.t=${t};save();render()">ナンバーズ${t}</button>`).join('')}</div></header>
  <main>${sam}${h}<p class="mu">※当選を保証するものではなく、過去の出目を整理した参考情報です。抽選は毎回独立しており、購入は無理のない範囲でお願いします。</p></main>
- <nav>${[['home','ホーム'],['ana','分析'],['rec','予報'],['res','的中実績'],['set','設定']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)">${l}</button>`).join('')}</nav>`;
+ <nav>${[['home','ダッシュボード'],['ai','予想'],['dt','詳細分析'],['res','的中実績'],['set','設定']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)">${l}</button>`).join('')}</nav>`;
  S.theme=='auto'?document.documentElement.removeAttribute('data-theme'):document.documentElement.setAttribute('data-theme',S.theme)}
 function runBt(){const L=S.t,D=S.D[L],n=Math.min(S.n,D.length),base=5/10**L*100;
  $('#bt').innerHTML='<table><tr><th>方針</th><th>的中</th><th>的中率</th></tr>'+Object.values(W).map(w=>{const[h,t]=bt(D,L,n,w,5);return`<tr><td>${w[3]}</td><td>${h}/${t}</td><td>${(h/t*100).toFixed(1)}%</td></tr>`}).join('')+`</table><p class="mu">でたらめに5点選んだ場合の期待値は約${base.toFixed(2)}%です。これを大きく上回らなければ、スコアに予測力があるとは言えません。</p>`}
