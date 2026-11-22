@@ -57,4 +57,22 @@ function aiDetail(D,L){const M=aiModel(D,L),N=M.N,p=Math.min(S.dp||0,L-1),dw=S.d
  <div class="card"><h2>${PN[L][p]}の位：前回との差分</h2>${ks.map(k=>`<div class="bar"><b style="width:28px">${k>0?'+':''}${k}</b><i style="width:${sd[k]/mxd*65}%"></i>${sd[k]}</div>`).join('')}</div>
  <div class="card"><h2>合計値</h2><p>平均 ${mean.toFixed(1)}／中央値 ${med}／最頻値 ${mode}／標準偏差 ${sdv.toFixed(1)}</p><table><tr><th>合計</th><th>回数</th><th>割合</th></tr>${tb(M.sumH,6)}</table></div>
  <div class="card"><h2>高低（H=5〜9, L=0〜4）</h2><table><tr><th>型</th><th>回数</th><th>割合</th></tr>${tb(M.hlH,8)}</table></div>
- <div class="card"><h2>奇偶（O=奇数, E=偶数）</h2><table><tr><th>型</th><th>回数</th><th>割合</th></tr>${tb(M.oeH,8)}</table></div>`}
+ <div class="card"><h2>奇偶（O=奇数, E=偶数）</h2><table><tr><th>型</th><th>回数</th><th>割合</th></tr>${tb(M.oeH,8)}</table></div>
+ <div class="card"><h2>乱数性の確認（${PN[L][p]}の位）</h2>${(()=>{const t=aiTest(D,p);return`<p>偏りの指標（カイ二乗）：<b>${t.x2.toFixed(1)}</b>（16.9未満なら、一様な乱数と区別できません）</p><p>出現間隔のばらつき（変動係数）：<b>${t.cv.toFixed(3)}</b>／でたらめな場合の理論値 0.949</p><p class="mu">${t.x2<16.92?'この位の出現は、一様な乱数と区別できません。':'目安を超えています。ただし、複数の位を見ると、偶然で超えることがあります。'}</p>`})()}</div>`}
+// ===== 購入判断・乱数性の確認（引継ぎ書の内容）=====
+function aiTest(D,p){const N=D.length,c=Array(10).fill(0),last=Array(10).fill(-1),g=[];
+ D.forEach((x,i)=>{const d=x[p];c[d]++;if(last[d]>=0)g.push(i-last[d]);last[d]=i});
+ const x2=c.reduce((t,v)=>t+(v-N/10)**2/(N/10),0),m=g.reduce((a,b)=>a+b,0)/g.length,sd=Math.sqrt(g.reduce((t,v)=>t+(v-m)**2,0)/g.length);return{x2,cv:sd/m}}
+const ptag=c=>{const t=[];if(new Set(c).size==1)t.push('ゾロ目');if(c.every((d,i)=>!i||d==c[i-1]+1)||c.every((d,i)=>!i||d==c[i-1]-1))t.push('連番');
+ if(c.every(d=>d%2==0))t.push('全偶数');if(c.every(d=>d%2))t.push('全奇数');if(c.every(d=>d<5))t.push('小さい数のみ');if(c.every(d=>d>4))t.push('大きい数のみ');return t};
+function aiBuy(D,L){const k=S.bk||3,yen=k*200,wk=yen*5,yr=wk*52,mo=Math.round(yr/12),R=aiRank(aiModel(D,L)),f=x=>Math.round(x).toLocaleString()+'円',ls=x=>f(x*.55),
+ fl=R.st.slice(0,10).map(([c])=>[c,ptag(c)]).filter(x=>x[1].length),
+ th=L==3?'<tr><td>ストレート</td><td>1/1,000</td><td>90,000円</td></tr>':'<tr><td>ストレート</td><td>1/10,000</td><td>900,000円</td></tr><tr><td>ボックス（4桁すべて異なる）</td><td>24/10,000</td><td>37,500円</td></tr>';
+ return`<div class="card"><h2>公式の理論値（ナンバーズ${L}）</h2><table><tr><th>タイプ</th><th>確率</th><th>当せん金（理論値）</th></tr>${th}</table>
+ <p class="mu">1口200円あたりの期待払戻は約90円（還元率約45%）、期待損は約110円です。実際の当せん金は、回ごとに変わります。</p></div>
+ <div class="card"><h2>購入額と期待損の目安</h2><label>1回あたりの口数（週5回の抽せん）</label><select onchange="S.bk=+this.value;render()">${[1,2,3,5,10].map(v=>`<option value="${v}" ${v==k?'selected':''}>${v}口</option>`).join('')}</select>
+ <table style="margin-top:8px"><tr><th></th><th>購入額</th><th>期待損</th></tr><tr><td>1回</td><td>${f(yen)}</td><td>${ls(yen)}</td></tr><tr><td>1週間</td><td>${f(wk)}</td><td>${ls(wk)}</td></tr><tr><td>1か月</td><td>${f(mo)}</td><td>${ls(mo)}</td></tr><tr><td>1年</td><td>${f(yr)}</td><td>${ls(yr)}</td></tr></table>
+ <p class="mu">期待損は、還元率45%で計算した、長く続けたときの平均です。AI総合の予想は、この還元率を変えません。</p></div>
+ <div class="card"><h2>見送りの判断について</h2><p>ロト6では、持ち込み額（キャリーオーバー）が大きい回ほど還元率が上がります。ナンバーズには、同じ仕組みがあるかを、まだ確認できていません。そのため、「この回は買うと得」と言える基準は、今のところありません。ロト6の境界の値も、ナンバーズには使えません。見送りは、予算を基準に決めてください。</p></div>
+ <div class="card"><h2>人気が偏りやすい型（未検証）</h2><p class="mu">当せん金は、当せん口数で山分けされます。人気の番号が当たると、取り分が減る可能性があります。確率は変わりません。ロト6の検証では、効果は1口あたり約+4.6円でした。ナンバーズでは、まだ検証していません。</p>
+ ${fl.length?fl.map(([c,t])=>`<div class="rc"><b class="num" style="font-size:20px">${c.join('')}</b><small>${t.join('・')}</small></div>`).join(''):'<p class="mu">AI総合の上位10には、該当する型はありません。</p>'}</div>`}
