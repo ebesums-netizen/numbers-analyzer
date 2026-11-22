@@ -17,7 +17,7 @@ main{padding:12px;max-width:640px;margin:auto}
 .seg{display:flex;gap:6px}.seg button,select,textarea,.btn{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:6px 12px}
 .seg button{flex:1}.seg button.on,.btn{background:var(--ac);color:#fff;border-color:var(--ac)}
 nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px);z-index:9}
-nav button{flex:1;border:0;background:none;color:var(--mu);padding:12px 0;font:inherit;font-size:13px}nav button.on{color:var(--ac);font-weight:700}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:12px 0;font:inherit;font-size:12px}nav button.on{color:var(--ac);font-weight:700}
 .rc{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)}.rc:last-child{border:0}
 .num{font:700 26px ui-monospace,Menlo,monospace;letter-spacing:4px;color:var(--ac)}small,.mu{color:var(--mu);font-size:12px}
 .bar{display:flex;align-items:center;gap:6px;font-size:12px}.bar i{display:block;height:10px;background:var(--ac);border-radius:3px}
@@ -73,6 +73,7 @@ function render(){
  if(S.tab=='home'){h+=aiHome(D,L)}
  if(S.tab=='ai'){h+=aiList(D,L)}
  if(S.tab=='dt'){h+=aiDetail(D,L)}
+ if(S.tab=='buy'){h+=aiBuy(D,L)}
  if(false){const sb=straight(scoreAll(D,L,n,W.balanced)).slice(0,3),bb=box(scoreAll(D,L,n,W.balanced),L).slice(0,3);
   h+=rng()+`<div class="card"><h2>今日のおすすめ（ストレート）</h2>${sb.map(([d,s])=>card(d.join(''),s,L,'バランス型')).join('')}</div>
   <div class="card"><h2>ボックス候補</h2>${bb.map(([d,s])=>card(d.join(''),s,L,'バランス型')).join('')}</div>
@@ -106,7 +107,7 @@ function render(){
  const sam=S.sam[L]?'<div class="warn">現在はサンプルデータ（疑似乱数）で動いています。設定から実際の当選番号を取り込むと、実データで分析します。</div>':'';
  $('#app').innerHTML=`<header><h1>Numbers Analyzer ｜ 綜合予報</h1><div class="seg">${[3,4].map(t=>`<button class="${S.t==t?'on':''}" onclick="S.t=${t};save();render()">ナンバーズ${t}</button>`).join('')}</div></header>
  <main>${sam}${h}<p class="mu">※当選を保証するものではなく、過去の出目を整理した参考情報です。抽選は毎回独立しており、購入は無理のない範囲でお願いします。</p></main>
- <nav>${[['home','ダッシュボード'],['ai','予想'],['dt','詳細分析'],['res','的中実績'],['set','設定']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)">${l}</button>`).join('')}</nav>`;
+ <nav>${[['home','ダッシュボード'],['ai','予想'],['dt','詳細分析'],['res','的中実績'],['buy','購入判断'],['set','設定']].map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)">${l}</button>`).join('')}</nav>`;
  S.theme=='auto'?document.documentElement.removeAttribute('data-theme'):document.documentElement.setAttribute('data-theme',S.theme)}
 function runBt(){const L=S.t,D=S.D[L],n=Math.min(S.n,D.length),base=5/10**L*100;
  $('#bt').innerHTML='<table><tr><th>方針</th><th>的中</th><th>的中率</th></tr>'+Object.values(W).map(w=>{const[h,t]=bt(D,L,n,w,5);return`<tr><td>${w[3]}</td><td>${h}/${t}</td><td>${(h/t*100).toFixed(1)}%</td></tr>`}).join('')+`</table><p class="mu">でたらめに5点選んだ場合の期待値は約${base.toFixed(2)}%です。これを大きく上回らなければ、スコアに予測力があるとは言えません。</p>`}
